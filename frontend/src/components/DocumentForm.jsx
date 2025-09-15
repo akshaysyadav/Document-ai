@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Textarea } from '../components/ui/textarea';
@@ -18,6 +18,7 @@ const DocumentForm = ({ document, onClose, onSuccess, onError }) => {
   const [loading, setLoading] = useState(false);
   const [tagInput, setTagInput] = useState('');
   const [dragOver, setDragOver] = useState(false);
+  const fileInputRef = useRef(null);
 
   // Initialize form with document data if editing
   useEffect(() => {
@@ -263,6 +264,7 @@ const DocumentForm = ({ document, onClose, onSuccess, onError }) => {
                   onDragOver={handleDragOver}
                   onDragLeave={handleDragLeave}
                   onDrop={handleDrop}
+                  onClick={() => fileInputRef.current && fileInputRef.current.click()}
                 >
                   <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
                   <p className="text-sm text-gray-600 mb-2">
@@ -274,12 +276,20 @@ const DocumentForm = ({ document, onClose, onSuccess, onError }) => {
                     className="hidden"
                     id="file-upload"
                     accept=".pdf,.doc,.docx,.txt,.md,.jpg,.jpeg,.png,.gif"
+                    ref={fileInputRef}
                   />
-                  <Label htmlFor="file-upload" className="cursor-pointer">
-                    <Button type="button" variant="outline" size="sm">
-                      Choose File
-                    </Button>
-                  </Label>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      if (fileInputRef.current) fileInputRef.current.click();
+                    }}
+                  >
+                    Choose File
+                  </Button>
                   <p className="text-xs text-gray-500 mt-2">
                     Maximum file size: 10MB
                   </p>

@@ -1,0 +1,31 @@
+# syntax=docker/dockerfile:1
+
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Install OS deps for node-gyp if needed
+RUN apk add --no-cache python3 make g++
+
+# Enable corepack for pnpm if needed in future
+RUN corepack enable || true
+
+# Copy package manifests first for caching
+COPY package.json package-lock.json* pnpm-lock.yaml* yarn.lock* ./
+
+# Install dependencies (prefer npm, fall back if lockfiles missing)
+RUN if [ -f package-lock.json ]; then npm ci; \
+    elif [ -f pnpm-lock.yaml ]; then npm i -g pnpm && pnpm i --frozen-lockfile; \
+    elif [ -f yarn.lock ]; then npm i -g yarn && yarn install --frozen-lockfile; \
+    else npm install; fi
+
+# Copy the rest of the app
+COPY . .
+
+# Expose Vite dev port
+EXPOSE 3000
+
+ENV HOST=0.0.0.0
+ENV PORT=3000
+
+CMD ["npm", "run", "dev"]

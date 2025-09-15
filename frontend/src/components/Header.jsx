@@ -69,11 +69,11 @@ const Header = () => {
     const publicItems = [
       { name: "Home", href: "/" },
       { name: "About", href: "/#about" },
+      { name: "Documents", href: "/documents" },
     ];
 
     const normalUserItems = [
       ...publicItems,
-      { name: "Documents", href: "/documents" },
     ];
 
     const staffItems = [

@@ -37,89 +37,91 @@ default_queue = Queue(connection=redis_conn)
 
 def process_document_ocr(document_id: int, file_path: str):
     """Process PDF: split pages, OCR per page, chunk, embed, upsert to Qdrant"""
-    try:
-        logger.info(f"Starting PDF processing for document: {document_id}")
+    logger.info(f"Starting PDF processing for document: {document_id}")
 
-        # Fetch the original PDF from MinIO into memory
-        obj = minio_client.get_object(MINIO_BUCKET, file_path)
+    # Fetch the original PDF from MinIO into memory
+    obj = minio_client.get_object(MINIO_BUCKET, file_path)
+    try:
         pdf_bytes = obj.read()
+    finally:
         obj.close()
         obj.release_conn()
 
-        # Read PDF pages
-        reader = PdfReader(BytesIO(pdf_bytes))
-        num_pages = len(reader.pages)
+    # Read PDF pages
+    reader = PdfReader(BytesIO(pdf_bytes))
+    num_pages = len(reader.pages)
 
-        db: Session = SessionLocal()
-        total_chunks = 0
-        try:
-            for page_index in range(num_pages):
-                page_no = page_index + 1
+    db: Session = SessionLocal()
+    total_chunks = 0
+    try:
+        for page_index in range(num_pages):
+            page_no = page_index + 1
 
-                # Extract text using PyPDF2 (basic); if empty, fallback to OCR image path later
-                try:
-                    page = reader.pages[page_index]
-                    text = page.extract_text() or ""
-                except Exception:
-                    text = ""
+            # Extract text using PyPDF2 (basic); if empty, fallback to OCR image path later
+            try:
+                page = reader.pages[page_index]
+                text = page.extract_text() or ""
+            except Exception:
+                text = ""
 
-                # If no text from PDF layer, skip OCR in this MVP (image OCR would need rasterization)
-                ocr_conf = None
+            # If no text from PDF layer, skip OCR in this MVP (image OCR would need rasterization)
+            ocr_conf = None
 
-                # Store per-page text
-                db_page = DocumentPage(
+            # Store per-page text
+            db_page = DocumentPage(
+                uuid=str(uuidlib.uuid4()),
+                doc_id=document_id,
+                page_no=page_no,
+                ocr_confidence=ocr_conf,
+                text=text or ""
+            )
+            db.add(db_page)
+            db.commit()
+            db.refresh(db_page)
+
+            # Chunk page text
+            chunks = _chunk_text_simple(text or "")
+            if not chunks:
+                continue
+
+            # Persist chunks
+            for chunk_text in chunks:
+                db_chunk = TextChunk(
                     uuid=str(uuidlib.uuid4()),
                     doc_id=document_id,
                     page_no=page_no,
-                    ocr_confidence=ocr_conf,
-                    text=text or ""
+                    text=chunk_text
                 )
-                db.add(db_page)
-                db.commit()
-                db.refresh(db_page)
+                db.add(db_chunk)
+            db.commit()
 
-                # Chunk page text
-                chunks = _chunk_text_simple(text or "")
-                if not chunks:
-                    continue
-
-                # Persist chunks
-                for chunk_text in chunks:
-                    db_chunk = TextChunk(
-                        uuid=str(uuidlib.uuid4()),
-                        doc_id=document_id,
-                        page_no=page_no,
-                        text=chunk_text
+            # Embed and upsert to Qdrant with metadata
+            for chunk_text in chunks:
+                vector = document_service._simple_text_embedding(chunk_text)
+                point_id = str(uuidlib.uuid4())
+                payload = {
+                    "doc_id": document_id,
+                    "page_no": page_no,
+                    "text": chunk_text,
+                }
+                try:
+                    from .database import qdrant_client
+                    qdrant_client.upsert(
+                        collection_name=document_service.collection_name,
+                        points=[{"id": point_id, "vector": vector, "payload": payload}],
                     )
-                    db.add(db_chunk)
-                db.commit()
+                except Exception as e:
+                    logger.warning(f"Qdrant upsert failed for doc {document_id} page {page_no}: {e}")
 
-                # Embed and upsert to Qdrant with metadata
-                for chunk_text in chunks:
-                    vector = document_service._simple_text_embedding(chunk_text)
-                    point_id = str(uuidlib.uuid4())
-                    payload = {
-                        "doc_id": document_id,
-                        "page_no": page_no,
-                        "text": chunk_text,
-                    }
-                    try:
-                        from .database import qdrant_client
-                        qdrant_client.upsert(
-                            collection_name=document_service.collection_name,
-                            points=[{"id": point_id, "vector": vector, "payload": payload}],
-                        )
-                    except Exception as e:
-                        logger.warning(f"Qdrant upsert failed for doc {document_id} page {page_no}: {e}")
+            total_chunks += len(chunks)
 
-                total_chunks += len(chunks)
-
-            logger.info(f"Completed PDF processing for doc {document_id}: pages={num_pages}, chunks={total_chunks}")
-            return {"document_id": document_id, "pages": num_pages, "chunks": total_chunks}
-        
+        logger.info(f"Completed PDF processing for doc {document_id}: pages={num_pages}, chunks={total_chunks}")
+        return {"document_id": document_id, "pages": num_pages, "chunks": total_chunks}
     except Exception as e:
         logger.error(f"PDF processing failed for document {document_id}: {e}")
         raise
+    finally:
+        db.close()
 
 def _chunk_text_simple(text: str, max_chars: int = 1200) -> list[str]:
     if not text:

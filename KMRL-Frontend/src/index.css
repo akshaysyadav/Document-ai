@@ -1,0 +1,207 @@
+
+@import "./dark-palette.css";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* KMRL AI-Powered Landing Page Design System 
+All colors MUST be HSL. KMRL brand colors: blue, green, white
+*/
+
+@layer base {
+  :root {
+    /* KMRL Brand Colors */
+    --background: 0 0% 100%;
+    --foreground: 220 15% 25%;
+
+    /* KMRL Primary Blue */
+    --primary: 220 90% 56%;
+    --primary-foreground: 0 0% 100%;
+    --primary-light: 220 85% 65%;
+    --primary-dark: 220 95% 45%;
+
+    /* KMRL Secondary Green */
+    --secondary: 142 70% 50%;
+    --secondary-foreground: 0 0% 100%;
+    --secondary-light: 142 65% 60%;
+    --secondary-dark: 142 75% 40%;
+
+    /* Neutral Colors */
+    --card: 0 0% 100%;
+    --card-foreground: 220 15% 25%;
+    --muted: 220 15% 96%;
+    --muted-foreground: 220 10% 55%;
+    --accent: 220 25% 95%;
+    --accent-foreground: 220 15% 25%;
+
+  /* Interactive Colors */
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 220 13% 80%; /* Darker for visibility in light mode */
+  --input: 220 13% 91%;
+  --ring: 220 90% 56%;
+
+    /* Gradient Variables */
+    --gradient-hero: linear-gradient(135deg, hsl(220 90% 56%) 0%, hsl(142 70% 50%) 100%);
+    --gradient-card: linear-gradient(145deg, hsl(220 25% 98%) 0%, hsl(220 15% 96%) 100%);
+    --gradient-ai: linear-gradient(90deg, hsl(220 95% 45%) 0%, hsl(220 90% 56%) 50%, hsl(142 75% 40%) 100%);
+
+    /* Shadows */
+    --shadow-soft: 0 4px 12px hsl(220 15% 25% / 0.08);
+    --shadow-medium: 0 8px 25px hsl(220 15% 25% / 0.12);
+    --shadow-strong: 0 12px 35px hsl(220 15% 25% / 0.16);
+    --shadow-glow: 0 0 30px hsl(220 90% 56% / 0.3);
+
+    /* Animation Variables */
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-bounce: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+
+    --radius: 0.5rem;
+
+    --sidebar-background: 0 0% 98%;
+
+    --sidebar-foreground: 240 5.3% 26.1%;
+
+    --sidebar-primary: 240 5.9% 10%;
+
+    --sidebar-primary-foreground: 0 0% 98%;
+
+    --sidebar-accent: 240 4.8% 95.9%;
+
+    --sidebar-accent-foreground: 240 5.9% 10%;
+
+    --sidebar-border: 220 13% 91%;
+
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+
+  .dark {
+  --background: 220 24% 8%; /* Deep navy */
+  --foreground: 220 16% 92%; /* Soft white-blue */
+
+  --card: 220 19% 13%;
+  --card-foreground: 220 16% 92%;
+
+  --popover: 220 19% 13%;
+  --popover-foreground: 220 16% 92%;
+
+  --primary: 220 90% 56%;
+  --primary-foreground: 0 0% 100%;
+
+  --secondary: 142 70% 45%;
+  --secondary-foreground: 0 0% 100%;
+
+  --muted: 220 15% 18%;
+  --muted-foreground: 220 10% 70%;
+
+  --accent: 220 25% 28%;
+  --accent-foreground: 220 16% 92%;
+
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 0 0% 100%;
+
+  --border: 220 13% 30%;
+  --input: 220 13% 22%;
+  --ring: 220 90% 56%;
+  --sidebar-background: 220 19% 13%;
+  --sidebar-foreground: 220 16% 92%;
+  --sidebar-primary: 224.3 76.3% 48%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 220 25% 28%;
+  --sidebar-accent-foreground: 220 16% 92%;
+  --sidebar-border: 220 13% 30%;
+  --sidebar-ring: 220 90% 56%;
+
+  /* Updated dark gradients for better aesthetics */
+  --gradient-hero: linear-gradient(135deg, hsl(220 90% 56%) 0%, hsl(220 25% 28%) 60%, hsl(142 70% 45%) 100%);
+  --gradient-card: linear-gradient(145deg, hsl(220 19% 13%) 0%, hsl(220 15% 18%) 100%);
+  --gradient-ai: linear-gradient(90deg, hsl(220 90% 56%) 0%, hsl(220 25% 28%) 50%, hsl(142 70% 45%) 100%);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans;
+  }
+}
+
+@layer utilities {
+  /* Custom Gradient Classes */
+  .gradient-hero {
+    background: var(--gradient-hero);
+  }
+
+  .gradient-card {
+    background: var(--gradient-card);
+  }
+
+  .gradient-ai {
+    background: var(--gradient-ai);
+  }
+
+  /* Safe Gradient Text Classes */
+  .gradient-text-hero {
+    background: var(--gradient-hero);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    /* Fallback for unsupported browsers */
+    color: hsl(var(--primary));
+  }
+
+  /* Ensure gradient text has fallback */
+  @supports not (background-clip: text) {
+    .gradient-text-hero {
+      color: hsl(var(--primary));
+      -webkit-text-fill-color: unset;
+    }
+  }
+
+  /* Shadow Utilities */
+  .shadow-soft {
+    box-shadow: var(--shadow-soft);
+  }
+
+  .shadow-medium {
+    box-shadow: var(--shadow-medium);
+  }
+
+  .shadow-strong {
+    box-shadow: var(--shadow-strong);
+  }
+
+  .shadow-glow {
+    box-shadow: var(--shadow-glow);
+  }
+
+  /* Animation Utilities */
+  .transition-smooth {
+    transition: var(--transition-smooth);
+  }
+
+  .transition-bounce {
+    transition: var(--transition-bounce);
+  }
+
+  /* Hover Effects */
+  .hover-lift {
+    @apply transition-smooth hover:translate-y-[-4px] hover:shadow-medium;
+  }
+
+  .hover-glow {
+    @apply transition-smooth hover:shadow-glow;
+  }
+
+  /* AI-themed animations */
+  .pulse-ai {
+    animation: pulse-ai 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  .float-animation {
+    animation: float 6s ease-in-out infinite;
+  }
+}

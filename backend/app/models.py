@@ -27,6 +27,28 @@ class Document(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
+class DocumentPage(Base):
+    __tablename__ = "document_pages"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    uuid = Column(String, unique=True, index=True, default=lambda: str(uuid.uuid4()))
+    doc_id = Column(Integer, index=True)
+    page_no = Column(Integer, index=True)
+    ocr_confidence = Column(Float, nullable=True)
+    text = Column(Text)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+class TextChunk(Base):
+    __tablename__ = "text_chunks"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    uuid = Column(String, unique=True, index=True, default=lambda: str(uuid.uuid4()))
+    doc_id = Column(Integer, index=True)
+    page_no = Column(Integer, index=True)
+    text = Column(Text)
+    received_at = Column(DateTime(timezone=True), server_default=func.now())
+
 # Pydantic Models for API
 class DocumentCreate(BaseModel):
     title: str = Field(..., min_length=1, max_length=255)

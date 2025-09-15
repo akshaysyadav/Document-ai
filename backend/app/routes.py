@@ -9,6 +9,7 @@ from minio.error import S3Error
 from .database import get_db, minio_client, MINIO_BUCKET, health_check
 from .models import DocumentCreate, DocumentUpdate, DocumentResponse, DocumentList, FileUploadResponse
 from .services import document_service
+from .workers import enqueue_ocr_job
 
 router = APIRouter(prefix="/api/documents", tags=["documents"])
 
@@ -42,6 +43,12 @@ async def create_document(
         
         # Create document
         document = document_service.create_document(db, document_data, file)
+        # Fire-and-forget background preprocessing if file present
+        if file and document.file_path:
+            try:
+                enqueue_ocr_job(document.id, document.file_path)
+            except Exception:
+                pass
         return document
         
     except Exception as e:

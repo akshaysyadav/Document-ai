@@ -25,14 +25,7 @@ import Footer from "@/components/Footer";
 
 const Index = () => {
   const features = [
-    {
-      icon: <Train className="w-8 h-8" />,
-      title: "AI Metro Scheduler",
-      description:
-        "Intelligent train scheduling with real-time optimization for maximum efficiency and passenger satisfaction.",
-      link: "/scheduler",
-      color: "from-primary to-primary-light",
-    },
+    // Removed AI Scheduler for MVP
     {
       icon: <FileText className="w-8 h-8" />,
       title: "Document Intelligence MVP",
@@ -132,27 +125,15 @@ const Index = () => {
                     <CardDescription className="text-muted-foreground mb-6 text-base leading-relaxed">
                       {feature.description}
                     </CardDescription>
-                    {localStorage.getItem("isLoggedIn") === "true" ? (
-                      <Link to={feature.link}>
-                        <Button
-                          variant="outline"
-                          className="w-full group-hover:bg-primary group-hover:text-white group-hover:border-primary transition-all duration-300"
-                        >
-                          Explore Platform
-                          <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
-                        </Button>
-                      </Link>
-                    ) : (
-                      <Link to="/login">
-                        <Button
-                          variant="outline"
-                          className="w-full group-hover:bg-primary group-hover:text-white group-hover:border-primary transition-all duration-300"
-                        >
-                          Login to Access
-                          <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
-                        </Button>
-                      </Link>
-                    )}
+                    <Link to={feature.link}>
+                      <Button
+                        variant="outline"
+                        className="w-full group-hover:bg-primary group-hover:text-white group-hover:border-primary transition-all duration-300"
+                      >
+                        Explore
+                        <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
+                      </Button>
+                    </Link>
                   </CardContent>
                 </Card>
               ))}

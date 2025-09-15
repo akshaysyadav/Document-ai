@@ -19,7 +19,7 @@ const HeroSection = () => {
 
           {/* Main Headline */}
           <h1 className="text-5xl md:text-6xl lg:text-7xl font-display font-bold leading-tight mb-6 mt-16 animate-fade-in">
-            <span className="text-foreground">Document Automation</span>
+            <span className="text-foreground">Shreyansh Singh</span>
           </h1>
 
           {/* Subtext */}

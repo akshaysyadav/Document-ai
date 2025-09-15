@@ -9,7 +9,7 @@ import logging
 from .db import engine, Base
 from .qdrant_client import qdrant_client
 from .minio_client import minio_client
-from .database import init_db, init_minio, init_qdrant
+from .database import init_db, init_minio, init_qdrant, MINIO_BUCKET
 from .routes import router as documents_router
 
 # Configure logging
@@ -28,7 +28,13 @@ app = FastAPI(
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://frontend:3000"],
+    allow_origins=[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://frontend:5173",
+        "http://localhost:3000",
+        "http://frontend:3000",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -58,15 +64,13 @@ async def startup_event():
         except Exception as e:
             logger.warning(f"Qdrant connection failed: {e}")
         
-        # Test MinIO connection
+        # Test MinIO connection and ensure bucket exists
         try:
-            # Create bucket if it doesn't exist
-            bucket_name = "kmrl-documents"
-            if not minio_client.bucket_exists(bucket_name):
-                minio_client.make_bucket(bucket_name)
-                logger.info(f"Created MinIO bucket: {bucket_name}")
+            if not minio_client.bucket_exists(MINIO_BUCKET):
+                minio_client.make_bucket(MINIO_BUCKET)
+                logger.info(f"Created MinIO bucket: {MINIO_BUCKET}")
             else:
-                logger.info(f"MinIO bucket exists: {bucket_name}")
+                logger.info(f"MinIO bucket exists: {MINIO_BUCKET}")
         except Exception as e:
             logger.warning(f"MinIO connection failed: {e}")
             

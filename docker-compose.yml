@@ -49,17 +49,7 @@ services:
     environment:
       QDRANT__SERVICE__HTTP_PORT: 6333
       QDRANT__SERVICE__GRPC_PORT: 6334
-    healthcheck:
-      test:
-        [
-          "CMD",
-          "sh",
-          "-c",
-          "wget --quiet --tries=1 --spider http://localhost:6333/cluster || exit 1",
-        ]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+    # Healthcheck removed due to minimal image lacking wget/curl; backend will wait for service_started
 
   # MinIO Object Storage
   minio:
@@ -91,11 +81,15 @@ services:
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER:-kmrl_user}:${POSTGRES_PASSWORD:-kmrl_password}@postgres:5432/${POSTGRES_DB:-kmrl_db}
       - REDIS_URL=redis://redis:6379/0
+      - QDRANT_HOST=qdrant
+      - QDRANT_PORT=6333
       - QDRANT_URL=http://qdrant:6333
       - MINIO_ENDPOINT=minio:9000
       - MINIO_ACCESS_KEY=${MINIO_ROOT_USER:-minioadmin}
       - MINIO_SECRET_KEY=${MINIO_ROOT_PASSWORD:-minioadmin123}
       - ENVIRONMENT=${ENVIRONMENT:-development}
+      - WATCHFILES_FORCE_POLLING=true
+      - UVICORN_RELOAD=true
     ports:
       - "8000:8000"
     depends_on:
@@ -104,7 +98,7 @@ services:
       redis:
         condition: service_healthy
       qdrant:
-        condition: service_healthy
+        condition: service_started
       minio:
         condition: service_healthy
     networks:
@@ -122,6 +116,8 @@ services:
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER:-kmrl_user}:${POSTGRES_PASSWORD:-kmrl_password}@postgres:5432/${POSTGRES_DB:-kmrl_db}
       - REDIS_URL=redis://redis:6379/0
+      - QDRANT_HOST=qdrant
+      - QDRANT_PORT=6333
       - QDRANT_URL=http://qdrant:6333
       - MINIO_ENDPOINT=minio:9000
       - MINIO_ACCESS_KEY=${MINIO_ROOT_USER:-minioadmin}
@@ -148,6 +144,9 @@ services:
     environment:
       - VITE_API_URL=http://localhost:8000
       - VITE_APP_NAME=KMRL Document Intelligence MVP
+      - CHOKIDAR_USEPOLLING=1
+      - WATCHPACK_POLLING=true
+      - BROWSER=none
     depends_on:
       - backend
     networks:

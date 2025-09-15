@@ -4,8 +4,6 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
-import AIScheduler from "./pages/AIScheduler";
-import Documents from "./pages/Documents";
 import DocumentsPage from "./pages/DocumentsPage";
 import Reports from "./pages/Reports";
 import Dashboard from "./pages/Dashboard";
@@ -25,21 +23,7 @@ const App = () => (
       <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <Routes>
           <Route path="/" element={<Index />} />
-          <Route path="/scheduler" element={
-            <ProtectedRoute>
-              <AIScheduler />
-            </ProtectedRoute>
-          } />
-          <Route path="/documents" element={
-            <ProtectedRoute requiredRole="KMRL_STAFF">
-              <DocumentsPage />
-            </ProtectedRoute>
-          } />
-          <Route path="/documents-old" element={
-            <ProtectedRoute requiredRole="KMRL_STAFF">
-              <Documents />
-            </ProtectedRoute>
-          } />
+          <Route path="/documents" element={<DocumentsPage />} />
           <Route path="/reports" element={
             <ProtectedRoute requiredRole="KMRL_STAFF">
               <Reports />

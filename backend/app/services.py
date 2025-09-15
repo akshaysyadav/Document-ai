@@ -12,7 +12,7 @@ import logging
 from io import BytesIO
 import os
 
-from .models import Document, DocumentCreate, DocumentUpdate, DocumentResponse
+from .models import Document, DocumentCreate, DocumentUpdate, DocumentResponse, DocumentPage, TextChunk
 from .database import redis_client, minio_client, qdrant_client, MINIO_BUCKET
 
 logger = logging.getLogger(__name__)

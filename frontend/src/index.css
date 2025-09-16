@@ -130,35 +130,22 @@ All colors MUST be HSL. KMRL brand colors: blue, green, white
 }
 
 @layer utilities {
-  /* Custom Gradient Classes */
+  /* Custom Single Color Classes */
   .gradient-hero {
-    background: var(--gradient-hero);
+    background: hsl(var(--primary));
   }
 
   .gradient-card {
-    background: var(--gradient-card);
+    background: hsl(var(--muted));
   }
 
   .gradient-ai {
-    background: var(--gradient-ai);
+    background: hsl(var(--primary));
   }
 
-  /* Safe Gradient Text Classes */
+  /* Single Color Text Classes */
   .gradient-text-hero {
-    background: var(--gradient-hero);
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
-    /* Fallback for unsupported browsers */
     color: hsl(var(--primary));
-  }
-
-  /* Ensure gradient text has fallback */
-  @supports not (background-clip: text) {
-    .gradient-text-hero {
-      color: hsl(var(--primary));
-      -webkit-text-fill-color: unset;
-    }
   }
 
   /* Shadow Utilities */

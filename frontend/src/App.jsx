@@ -25,12 +25,12 @@ const App = () => (
           <Route path="/" element={<Index />} />
           <Route path="/documents" element={<DocumentsPage />} />
           <Route path="/reports" element={
-            <ProtectedRoute requiredRole="KMRL_STAFF">
+            <ProtectedRoute>
               <Reports />
             </ProtectedRoute>
           } />
           <Route path="/dashboard" element={
-            <ProtectedRoute requiredRole="KMRL_STAFF">
+            <ProtectedRoute>
               <Dashboard />
             </ProtectedRoute>
           } />

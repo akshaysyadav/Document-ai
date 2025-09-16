@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { Link } from "react-router-dom";
 import { 
   Mail, 
   Phone, 
@@ -17,14 +18,13 @@ const Footer = () => {
 
   const footerLinks = {
     product: [
-      { name: "AI Scheduler", href: "#scheduler" },
-      { name: "Document Automation", href: "#documents" },
-      { name: "Reports & Analytics", href: "#reports" },
-      { name: "Dashboard", href: "#dashboard" }
+      { name: "AI Scheduler", href: "/dashboard", isRoute: true },
+      { name: "Document Automation", href: "/documents", isRoute: true },
+      { name: "Reports & Analytics", href: "/reports", isRoute: true },
+      { name: "Dashboard", href: "/dashboard", isRoute: true }
     ],
     company: [
       { name: "About Us", href: "#about" },
-      { name: "Our Team", href: "#about" },
       { name: "Careers", href: "#" },
       { name: "Contact", href: "#" }
     ],
@@ -37,6 +37,8 @@ const Footer = () => {
 
   return (
   <footer className="bg-card text-card-foreground">
+      {/* Separator line */}
+      <div className="border-t border-border/30"></div>
       <div className="container mx-auto px-6 py-16">
         {/* Main Footer Content */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-12">
@@ -78,12 +80,21 @@ const Footer = () => {
             <ul className="space-y-2">
               {footerLinks.product.map((link, index) => (
                 <li key={index}>
-                  <a 
-                    href={link.href}
-                    className="text-foreground hover:text-primary transition-smooth text-sm"
-                  >
-                    {link.name}
-                  </a>
+                  {link.isRoute ? (
+                    <Link 
+                      to={link.href}
+                      className="text-foreground hover:text-primary transition-smooth text-sm"
+                    >
+                      {link.name}
+                    </Link>
+                  ) : (
+                    <a 
+                      href={link.href}
+                      className="text-foreground hover:text-primary transition-smooth text-sm"
+                    >
+                      {link.name}
+                    </a>
+                  )}
                 </li>
               ))}
             </ul>

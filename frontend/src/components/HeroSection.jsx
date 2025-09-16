@@ -10,7 +10,7 @@ const HeroSection = () => {
         className="absolute inset-0 bg-cover bg-center bg-no-repeat"
         style={{ backgroundImage: `url(${heroBg})` }}
       >
-        <div className="absolute inset-0 bg-gradient-to-r from-background/95 via-background/85 to-background/90" />
+        <div className="absolute inset-0 bg-background/90" />
       </div>
 
       {/* Content */}
@@ -31,7 +31,7 @@ const HeroSection = () => {
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center animate-fade-in">
             <Button 
               size="lg" 
-              className="px-8 py-6 text-lg font-semibold hover-lift gradient-hero text-white border-0 hover:opacity-90"
+              className="px-8 py-6 text-lg font-semibold hover-lift bg-primary text-white border-0 hover:bg-primary/90"
             >
               Try Metro Scheduler
               <ArrowRight className="ml-2 w-5 h-5" />
@@ -48,25 +48,25 @@ const HeroSection = () => {
           {/* Stats */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mt-16 max-w-4xl mx-auto animate-fade-in">
             <div className="text-center">
-              <div className="text-3xl md:text-4xl font-bold gradient-text-hero mb-2">85%</div>
+              <div className="text-3xl md:text-4xl font-bold text-primary mb-2">85%</div>
               <div className="text-muted-foreground">Time Saved</div>
             </div>
             <div className="text-center">
-              <div className="text-3xl md:text-4xl font-bold gradient-text-hero mb-2">99.2%</div>
+              <div className="text-3xl md:text-4xl font-bold text-primary mb-2">99.2%</div>
               <div className="text-muted-foreground">Accuracy Rate</div>
             </div>
             <div className="text-center">
-              <div className="text-3xl md:text-4xl font-bold gradient-text-hero mb-2">24/7</div>
+              <div className="text-3xl md:text-4xl font-bold text-primary mb-2">24/7</div>
               <div className="text-muted-foreground">Automated Operations</div>
             </div>
             <div className="text-center">
-              <div className="text-3xl md:text-4xl font-bold gradient-text-hero mb-2">50M+</div>
+              <div className="text-3xl md:text-4xl font-bold text-primary mb-2">50M+</div>
               <div className="text-muted-foreground">Passengers Served</div>
             </div>
           </div>
 
           {/* Additional Features Banner */}
-          <div className="mt-20 p-8 rounded-2xl bg-gradient-to-r from-primary/5 via-secondary/5 to-primary/5 border border-primary/20 animate-fade-in">
+          <div className="mt-20 p-8 rounded-2xl bg-primary/5 border border-primary/20 animate-fade-in">
             <div className="text-center">
               <h3 className="text-2xl font-bold text-foreground mb-4">Intelligent Metro Management</h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
@@ -77,8 +77,8 @@ const HeroSection = () => {
                   <span className="text-sm font-medium">Real-time Optimization</span>
                 </div>
                 <div className="flex items-center justify-center gap-3">
-                  <div className="p-2 rounded-lg bg-secondary/10">
-                    <ArrowRight className="w-5 h-5 text-secondary" />
+                  <div className="p-2 rounded-lg bg-primary/10">
+                    <ArrowRight className="w-5 h-5 text-primary" />
                   </div>
                   <span className="text-sm font-medium">Predictive Maintenance</span>
                 </div>

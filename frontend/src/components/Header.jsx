@@ -114,42 +114,29 @@ const Header = () => {
       </DropdownMenuContent>
     </DropdownMenu>
   ) : (
-    <div className="flex items-center gap-2">
-      <Button 
-        variant="ghost" 
-        size="sm" 
-        className="text-foreground hover:text-primary hover:bg-primary/10"
-        asChild
-      >
-        <Link to="/login" className="flex items-center gap-2">
-          <LogIn className="w-4 h-4" />
-          <span>Login</span>
-        </Link>
-      </Button>
-      <Button 
-        variant="outline"
-        size="sm"
-        className="border-muted text-foreground hover:bg-muted/50 font-medium"
-        asChild
-      >
-        <Link to="/signup" className="flex items-center gap-2">
-          <UserPlus className="w-4 h-4" />
-          <span>Sign Up</span>
-        </Link>
-      </Button>
-    </div>
+    <Button 
+      size="sm"
+      className="bg-primary text-white font-medium hover:bg-primary/90 px-6"
+      asChild
+    >
+      <Link to="/login">
+        Get Started
+      </Link>
+    </Button>
   );
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-b border-border shadow-sm">
+    <header className="fixed top-0 left-0 right-0 z-50">
       <nav className="container mx-auto px-6 py-3">
         <div className="flex items-center justify-between w-full">
-          {/* Logo and Project Name shifted to left */}
-          <div className="flex items-center space-x-3">
-            <Link to="/" className="flex items-center space-x-3 hover:opacity-90 transition-opacity">
-              <div className="bg-primary/5 p-2 rounded-xl shadow-sm">
-                <img src="/train.svg" alt="KMRL Train Logo" className="w-8 h-8" />
-              </div>
+          {/* Logo and Project Name - Left */}
+          <div className="flex items-center space-x-1">
+            <Link to="/" className="flex items-center space-x-1 hover:opacity-90 transition-opacity">
+              <img 
+                src="/KMRL.png" 
+                alt="KMRL Logo" 
+                className={`h-10 w-auto transition-all duration-300 ${darkMode ? 'filter invert brightness-0 contrast-100' : ''}`}
+              />
               <div>
                 <h1 className="font-display font-bold text-xl text-foreground">KMRL AI</h1>
                 <p className="text-xs text-muted-foreground">Metro Rail Solutions</p>
@@ -157,9 +144,66 @@ const Header = () => {
             </Link>
           </div>
 
-          {/* Desktop Navigation and Dark Mode Toggle shifted to right */}
+          {/* Home and About buttons - Center */}
+          <div className="hidden lg:flex absolute left-1/2 transform -translate-x-1/2">
+            <div className="bg-muted/100 dark:bg-muted/30 rounded-xl shadow-sm px-4 py-2 flex items-center space-x-2">
+              {navigationItems.slice(0, 2).map((item, index) => (
+                <div key={item.name} className="flex items-center">
+                  {item.name === 'About' ? (
+                    <button
+                      onClick={() => {
+                        if (location.pathname !== '/') {
+                          navigate('/');
+                          setTimeout(() => {
+                            document.getElementById('about')?.scrollIntoView({ behavior: 'smooth' });
+                          }, 100);
+                        } else {
+                          document.getElementById('about')?.scrollIntoView({ behavior: 'smooth' });
+                        }
+                      }}
+                      className={`text-foreground hover:text-primary transition-smooth font-medium px-2 py-1 rounded-md ${
+                        location.hash === '#about' 
+                          ? 'text-primary bg-primary/10'
+                          : 'hover:bg-muted/30'
+                      }`}
+                    >
+                      {item.name}
+                    </button>
+                  ) : item.name === 'Home' ? (
+                    <button
+                      onClick={() => {
+                        navigate('/');
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                      }}
+                      className={`text-foreground hover:text-primary transition-smooth font-medium px-2 py-1 rounded-md ${
+                        location.pathname === '/' 
+                          ? 'text-primary bg-primary/10'
+                          : 'hover:bg-muted/30'
+                      }`}
+                    >
+                      {item.name}
+                    </button>
+                  ) : (
+                    <Link
+                      to={item.href}
+                      className={`text-foreground hover:text-primary transition-smooth font-medium px-2 py-1 rounded-md ${
+                        location.pathname === item.href 
+                          ? 'text-primary bg-primary/10'
+                          : 'hover:bg-muted/30'
+                      }`}
+                    >
+                      {item.name}
+                    </Link>
+                  )}
+                  {index === 0 && <span className="text-foreground/60 dark:text-foreground/70 mx-2 font-light">|</span>}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Other navigation items, Dark Mode Toggle, and Auth - Right */}
           <div className="hidden lg:flex items-center space-x-6">
-            {navigationItems.map((item) => (
+            {navigationItems.slice(2).map((item) => (
               <Link
                 key={item.name}
                 to={item.href}
@@ -172,7 +216,7 @@ const Header = () => {
                 {item.name}
               </Link>
             ))}
-            <div className="h-8 w-px bg-border mx-2" />
+            
             {/* Dark mode toggle button - between nav and auth */}
             <Button
               variant="ghost"
@@ -191,7 +235,6 @@ const Header = () => {
                 </svg>
               )}
             </Button>
-            <div className="h-8 w-px bg-border mx-2" />
             {authButtons}
           </div>
 
@@ -236,7 +279,9 @@ const Header = () => {
                 </Link>
               ))}
               <div className="border-t border-border my-4 pt-4">
-                {authButtons}
+                <div className="flex justify-center">
+                  {authButtons}
+                </div>
               </div>
             </div>
           </div>

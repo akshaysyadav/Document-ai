@@ -128,6 +128,12 @@ export const documentAPI = {
     return response.data;
   },
 
+  // Analyze document for summary and tasks
+  analyzeDocument: async (id) => {
+    const response = await api.post(`/api/documents/${id}/analyze`);
+    return response.data;
+  },
+
   // Health check
   healthCheck: async () => {
     const response = await api.get('/api/documents/health');

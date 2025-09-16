@@ -101,8 +101,9 @@ def health_check():
     
     # Check database
     try:
+        from sqlalchemy import text
         with engine.connect() as conn:
-            conn.execute("SELECT 1")
+            conn.execute(text("SELECT 1"))
         health["database"] = True
     except Exception as e:
         logging.error(f"Database health check failed: {e}")

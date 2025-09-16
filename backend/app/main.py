@@ -143,8 +143,9 @@ async def service_status():
     # Check database
     try:
         from .db import SessionLocal
+        from sqlalchemy import text
         db = SessionLocal()
-        db.execute("SELECT 1")
+        db.execute(text("SELECT 1"))
         db.close()
         status["database"] = "healthy"
     except Exception as e:

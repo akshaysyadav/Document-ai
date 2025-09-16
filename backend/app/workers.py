@@ -11,7 +11,7 @@ from PyPDF2 import PdfReader
 from sqlalchemy.orm import Session
 from .database import minio_client, MINIO_BUCKET, SessionLocal
 from .models import DocumentPage, TextChunk
-from .services import document_service
+from .services import document_service, document_analysis_service
 from qdrant_client import QdrantClient
 from qdrant_client.models import PointStruct
 from .nlp import generate_embeddings, extract_entities
@@ -48,10 +48,12 @@ redis_conn = get_redis_connection()
 if redis_conn:
     ocr_queue = Queue('ocr', connection=redis_conn)
     nlp_queue = Queue('nlp', connection=redis_conn)
+    analysis_queue = Queue('analysis', connection=redis_conn)
     default_queue = Queue(connection=redis_conn)
 else:
     ocr_queue = None
     nlp_queue = None
+    analysis_queue = None
     default_queue = None
 
 def process_document_ocr(document_id: int, file_path: str):
@@ -217,6 +219,67 @@ def process_document_nlp(document_id: str, text: str):
             
         raise
 
+def process_document_analysis(document_id: int):
+    """Analyze document for summary and tasks using AI models"""
+    logger.info(f"Starting document analysis for document: {document_id}")
+    
+    db: Session = SessionLocal()
+    try:
+        # Get document from database
+        from .models import Document
+        document = db.query(Document).filter(Document.id == document_id).first()
+        
+        if not document:
+            logger.error(f"Document {document_id} not found for analysis")
+            return {"error": "Document not found"}
+        
+        # Extract text content for analysis
+        text_content = ""
+        
+        # Use document content if available
+        if document.content:
+            text_content = document.content
+        else:
+            # If no content, try to get text from document pages
+            pages = db.query(DocumentPage).filter(DocumentPage.doc_id == document_id).order_by(DocumentPage.page_no).all()
+            if pages:
+                text_content = "\n\n".join([page.text or "" for page in pages])
+            
+            # If still no content, try to get from text chunks
+            if not text_content.strip():
+                chunks = db.query(TextChunk).filter(TextChunk.doc_id == document_id).all()
+                if chunks:
+                    text_content = "\n".join([chunk.text or "" for chunk in chunks])
+        
+        if not text_content.strip():
+            logger.warning(f"No text content found for document {document_id}")
+            return {"error": "No text content available for analysis"}
+        
+        # Perform AI analysis
+        analysis_result = document_analysis_service.analyze_document(text_content)
+        
+        # Update document with analysis results
+        document.summary = analysis_result["summary"]
+        document.tasks = analysis_result["tasks"]
+        db.commit()
+        
+        logger.info(f"Document analysis completed for document {document_id}: summary={len(analysis_result['summary'])} chars, tasks={len(analysis_result['tasks'])}")
+        
+        return {
+            "document_id": document_id,
+            "summary": analysis_result["summary"],
+            "tasks": analysis_result["tasks"],
+            "text_length": len(text_content)
+        }
+        
+    except Exception as e:
+        logger.error(f"Document analysis failed for document {document_id}: {e}")
+        # Update document with error status if needed
+        db.rollback()
+        raise
+    finally:
+        db.close()
+
 def enqueue_ocr_job(document_id: str, file_path: str):
     """Enqueue OCR processing job"""
     if redis_conn is None or ocr_queue is None:
@@ -235,6 +298,15 @@ def enqueue_nlp_job(document_id: str, text: str):
     logger.info(f"Enqueued NLP job for document {document_id}: {job.id}")
     return job
 
+def enqueue_analysis_job(document_id: int):
+    """Enqueue document analysis job"""
+    if redis_conn is None or analysis_queue is None:
+        raise Exception("Redis connection not available")
+        
+    job = analysis_queue.enqueue(process_document_analysis, document_id, timeout=600)  # 10 minute timeout
+    logger.info(f"Enqueued analysis job for document {document_id}: {job.id}")
+    return job
+
 def run_worker():
     """Run RQ worker"""
     if redis_conn is None:
@@ -242,7 +314,7 @@ def run_worker():
         return
         
     with Connection(redis_conn):
-        worker = Worker(['ocr', 'nlp', 'default'])
+        worker = Worker(['ocr', 'nlp', 'analysis', 'default'])
         logger.info("Starting RQ worker...")
         worker.work()
 

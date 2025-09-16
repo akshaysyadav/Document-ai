@@ -4,12 +4,15 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 import io
 import mimetypes
+import logging
 from minio.error import S3Error
 
+logger = logging.getLogger(__name__)
+
 from .database import get_db, minio_client, MINIO_BUCKET, health_check
-from .models import DocumentCreate, DocumentUpdate, DocumentResponse, DocumentList, FileUploadResponse
-from .services import document_service
-from .workers import enqueue_ocr_job
+from .models import DocumentCreate, DocumentUpdate, DocumentResponse, DocumentList, FileUploadResponse, DocumentAnalysisResponse
+from .services_minimal import document_service, document_analysis_service
+# from .workers import enqueue_ocr_job, enqueue_analysis_job  # Commented out for minimal version
 
 router = APIRouter(prefix="/api/documents", tags=["documents"])
 
@@ -43,12 +46,12 @@ async def create_document(
         
         # Create document
         document = document_service.create_document(db, document_data, file)
-        # Fire-and-forget background preprocessing if file present
-        if file and document.file_path:
-            try:
-                enqueue_ocr_job(document.id, document.file_path)
-            except Exception:
-                pass
+        # Fire-and-forget background preprocessing if file present (disabled for minimal version)
+        # if file and document.file_path:
+        #     try:
+        #         enqueue_ocr_job(document.id, document.file_path)
+        #     except Exception:
+        #         pass
         return document
         
     except Exception as e:
@@ -247,6 +250,80 @@ async def upload_file_only(
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/{document_id}/analyze", response_model=DocumentAnalysisResponse)
+async def analyze_document(
+    document_id: int,
+    db: Session = Depends(get_db)
+):
+    """Analyze document for summary and tasks using AI models"""
+    try:
+        # Get document to verify it exists and user has access
+        document = document_service.get_document(db, document_id)
+        if not document:
+            raise HTTPException(status_code=404, detail="Document not found")
+        
+        # Check if document already has analysis
+        if hasattr(document, 'summary') and document.summary and hasattr(document, 'tasks') and document.tasks:
+            # Return existing analysis
+            return DocumentAnalysisResponse(
+                summary=document.summary,
+                tasks=document.tasks or []
+            )
+        
+        # Enqueue background analysis job (disabled for minimal version - using sync analysis)
+        # try:
+        #     job = enqueue_analysis_job(document_id)
+        #     logger.info(f"Enqueued analysis job {job.id} for document {document_id}")
+        # except Exception as e:
+        #     logger.error(f"Failed to enqueue analysis job for document {document_id}: {e}")
+        
+        # Perform synchronous analysis
+        from .services_minimal import document_analysis_service
+        from .models import Document, DocumentPage, TextChunk
+        
+        # Extract text content
+        text_content = ""
+        if hasattr(document, 'content') and document.content:
+            text_content = document.content
+        else:
+            # Try to get text from pages or chunks
+            pages = db.query(DocumentPage).filter(DocumentPage.doc_id == document_id).order_by(DocumentPage.page_no).all()
+            if pages:
+                text_content = "\n\n".join([page.text or "" for page in pages])
+            
+            if not text_content.strip():
+                chunks = db.query(TextChunk).filter(TextChunk.doc_id == document_id).all()
+                if chunks:
+                    text_content = "\n".join([chunk.text or "" for chunk in chunks])
+        
+        if not text_content.strip():
+            # If no content available, create a default analysis
+            analysis_result = {
+                "summary": f"Document '{document.title}' - No text content available for analysis.",
+                "tasks": ["Review document content", "Add text content for better analysis"]
+            }
+        else:
+            # Perform analysis
+            analysis_result = document_analysis_service.analyze_document(text_content)
+        
+        # Update document
+        db_document = db.query(Document).filter(Document.id == document_id).first()
+        if db_document:
+            db_document.summary = analysis_result["summary"]
+            db_document.tasks = analysis_result["tasks"]
+            db.commit()
+        
+        return DocumentAnalysisResponse(
+            summary=analysis_result["summary"],
+            tasks=analysis_result["tasks"]
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Analysis failed for document {document_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")
 
 # Health check endpoint
 @router.get("/health")

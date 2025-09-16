@@ -24,6 +24,8 @@ class Document(Base):
     doc_metadata = Column(JSON)  # Additional metadata
     vector_id = Column(String(100))  # Qdrant vector ID
     is_processed = Column(Boolean, default=False)
+    summary = Column(Text)  # AI-generated summary
+    tasks = Column(JSON)  # Extracted tasks as JSON array
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
@@ -78,6 +80,8 @@ class DocumentResponse(BaseModel):
     doc_metadata: Optional[Dict[str, Any]]
     vector_id: Optional[str]
     is_processed: bool
+    summary: Optional[str]
+    tasks: Optional[List[str]]
     created_at: datetime
     updated_at: datetime
     
@@ -97,3 +101,10 @@ class FileUploadResponse(BaseModel):
     file_size: int
     file_type: str
     message: str
+
+class DocumentAnalysisResponse(BaseModel):
+    summary: str
+    tasks: List[str]
+    
+class DocumentAnalysisRequest(BaseModel):
+    document_id: int

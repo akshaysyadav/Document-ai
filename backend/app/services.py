@@ -11,6 +11,9 @@ from qdrant_client import QdrantClient
 import logging
 from io import BytesIO
 import os
+import torch
+from transformers import AutoTokenizer, AutoModelForSeq2SeqLM, pipeline
+import re
 
 from .models import Document, DocumentCreate, DocumentUpdate, DocumentResponse, DocumentPage, TextChunk
 from .database import redis_client, minio_client, qdrant_client, MINIO_BUCKET
@@ -358,5 +361,187 @@ class DocumentService:
             logger.error(f"Failed to search documents: {e}")
             raise HTTPException(status_code=500, detail=f"Document search failed: {str(e)}")
 
-# Create service instance
+class DocumentAnalysisService:
+    def __init__(self):
+        self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        self.summarizer = None
+        self.task_extractor = None
+        self._initialize_models()
+        
+    def _initialize_models(self):
+        """Initialize HuggingFace models for summarization and task extraction"""
+        try:
+            # Use smaller models for CPU or larger models for GPU
+            if self.device == "cuda":
+                summarization_model = "facebook/bart-large-cnn"
+                task_model = "google/flan-t5-base"
+            else:
+                summarization_model = "facebook/bart-base"
+                task_model = "google/flan-t5-small"
+            
+            logger.info(f"Loading models on {self.device}...")
+            
+            # Initialize summarization pipeline
+            self.summarizer = pipeline(
+                "summarization",
+                model=summarization_model,
+                device=0 if self.device == "cuda" else -1,
+                max_length=150,
+                min_length=30,
+                do_sample=False
+            )
+            
+            # Initialize task extraction pipeline
+            self.task_extractor = pipeline(
+                "text2text-generation",
+                model=task_model,
+                device=0 if self.device == "cuda" else -1
+            )
+            
+            logger.info(f"Models loaded successfully on {self.device}")
+            
+        except Exception as e:
+            logger.error(f"Failed to initialize AI models: {e}")
+            # Fallback to simple text processing if models fail
+            self.summarizer = None
+            self.task_extractor = None
+    
+    def generate_summary(self, text: str) -> str:
+        """Generate a concise summary of the document text"""
+        if not text or not text.strip():
+            return "No content available for summary."
+            
+        try:
+            # Limit text length for processing
+            max_input_length = 1024 if self.device == "cuda" else 512
+            truncated_text = text[:max_input_length] if len(text) > max_input_length else text
+            
+            if self.summarizer:
+                # Use AI model for summarization
+                result = self.summarizer(truncated_text)
+                summary = result[0]['summary_text']
+                logger.info(f"Generated AI summary of length {len(summary)}")
+                return summary
+            else:
+                # Fallback to simple extraction
+                return self._simple_summary(truncated_text)
+                
+        except Exception as e:
+            logger.error(f"Summarization failed: {e}")
+            return self._simple_summary(text)
+    
+    def extract_tasks(self, text: str) -> List[str]:
+        """Extract actionable tasks from the document text"""
+        if not text or not text.strip():
+            return []
+            
+        try:
+            if self.task_extractor:
+                # Use AI model for task extraction
+                prompt = f"""Extract actionable tasks, todos, deadlines, and responsibilities from this text. 
+                List only specific tasks that need to be done. Format as a simple list:
+                
+                {text[:800]}"""  # Limit input length
+                
+                result = self.task_extractor(prompt, max_length=200, num_return_sequences=1)
+                generated_text = result[0]['generated_text']
+                
+                # Parse the generated text into individual tasks
+                tasks = self._parse_generated_tasks(generated_text)
+                logger.info(f"Extracted {len(tasks)} tasks using AI model")
+                return tasks
+            else:
+                # Fallback to pattern-based extraction
+                return self._pattern_based_task_extraction(text)
+                
+        except Exception as e:
+            logger.error(f"Task extraction failed: {e}")
+            return self._pattern_based_task_extraction(text)
+    
+    def _simple_summary(self, text: str) -> str:
+        """Simple fallback summarization using first few sentences"""
+        sentences = text.split('. ')
+        if len(sentences) <= 2:
+            return text[:200] + "..." if len(text) > 200 else text
+        
+        # Take first 2-3 sentences
+        summary_sentences = sentences[:3]
+        summary = '. '.join(summary_sentences)
+        
+        if len(summary) > 300:
+            summary = summary[:300] + "..."
+        
+        return summary
+    
+    def _parse_generated_tasks(self, generated_text: str) -> List[str]:
+        """Parse AI-generated text into individual tasks"""
+        tasks = []
+        
+        # Split by common delimiters
+        lines = generated_text.split('\n')
+        
+        for line in lines:
+            line = line.strip()
+            # Remove common prefixes
+            line = re.sub(r'^[-*•\d+\.\)\s]+', '', line).strip()
+            
+            # Filter out empty lines and non-task content
+            if line and len(line) > 10 and any(keyword in line.lower() for keyword in 
+                ['task', 'todo', 'complete', 'finish', 'review', 'submit', 'prepare', 'schedule', 'contact', 'send', 'create', 'update']):
+                # Clean up the task
+                if line.endswith('.'):
+                    line = line[:-1]
+                tasks.append(line)
+        
+        return tasks[:10]  # Limit to 10 tasks
+    
+    def _pattern_based_task_extraction(self, text: str) -> List[str]:
+        """Fallback pattern-based task extraction"""
+        tasks = []
+        
+        # Common task patterns
+        task_patterns = [
+            r'(?:need to|must|should|have to|required to)\s+([^.!?\n]+)',
+            r'(?:todo|to-do|task)[:;\s]*([^.!?\n]+)',
+            r'(?:deadline|due)[:;\s]*([^.!?\n]+)',
+            r'(?:action item|action)[:;\s]*([^.!?\n]+)',
+            r'(?:responsibility|responsible for)[:;\s]*([^.!?\n]+)',
+            r'(?:complete|finish|submit|prepare|schedule|contact|send|create|update)\s+([^.!?\n]+)',
+        ]
+        
+        for pattern in task_patterns:
+            matches = re.finditer(pattern, text, re.IGNORECASE)
+            for match in matches:
+                task = match.group(1).strip()
+                if len(task) > 10 and len(task) < 200:  # Reasonable task length
+                    tasks.append(task)
+        
+        # Remove duplicates while preserving order
+        seen = set()
+        unique_tasks = []
+        for task in tasks:
+            task_lower = task.lower()
+            if task_lower not in seen:
+                seen.add(task_lower)
+                unique_tasks.append(task)
+        
+        return unique_tasks[:10]  # Limit to 10 tasks
+    
+    def analyze_document(self, text: str) -> Dict[str, Any]:
+        """Perform complete document analysis: summary + task extraction"""
+        logger.info(f"Starting document analysis for text of length {len(text)}")
+        
+        summary = self.generate_summary(text)
+        tasks = self.extract_tasks(text)
+        
+        result = {
+            "summary": summary,
+            "tasks": tasks
+        }
+        
+        logger.info(f"Document analysis completed: summary={len(summary)} chars, tasks={len(tasks)}")
+        return result
+
+# Create service instances
 document_service = DocumentService()
+document_analysis_service = DocumentAnalysisService()

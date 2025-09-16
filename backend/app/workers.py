@@ -21,19 +21,38 @@ logger = logging.getLogger(__name__)
 # Redis configuration
 REDIS_URL = os.getenv("REDIS_URL", "redis://redis:6379/0")
 
-# Initialize Redis connection
-try:
-    redis_conn = redis.from_url(REDIS_URL)
-    redis_conn.ping()
-    logger.info(f"Redis connected successfully: {REDIS_URL}")
-except Exception as e:
-    logger.error(f"Failed to connect to Redis: {e}")
-    redis_conn = None
+# Initialize Redis connection with retry logic
+def get_redis_connection():
+    """Get Redis connection with retry logic"""
+    max_retries = 10
+    retry_delay = 5
+    
+    for attempt in range(max_retries):
+        try:
+            conn = redis.from_url(REDIS_URL)
+            conn.ping()
+            logger.info(f"Redis connected successfully: {REDIS_URL}")
+            return conn
+        except Exception as e:
+            logger.warning(f"Redis connection attempt {attempt + 1}/{max_retries} failed: {e}")
+            if attempt < max_retries - 1:
+                import time
+                time.sleep(retry_delay)
+    
+    logger.error(f"Failed to connect to Redis after {max_retries} attempts")
+    return None
 
-# Queue definitions
-ocr_queue = Queue('ocr', connection=redis_conn)
-nlp_queue = Queue('nlp', connection=redis_conn)
-default_queue = Queue(connection=redis_conn)
+redis_conn = get_redis_connection()
+
+# Queue definitions (only create if Redis connection is available)
+if redis_conn:
+    ocr_queue = Queue('ocr', connection=redis_conn)
+    nlp_queue = Queue('nlp', connection=redis_conn)
+    default_queue = Queue(connection=redis_conn)
+else:
+    ocr_queue = None
+    nlp_queue = None
+    default_queue = None
 
 def process_document_ocr(document_id: int, file_path: str):
     """Process PDF: split pages, OCR per page, chunk, embed, upsert to Qdrant"""
@@ -200,7 +219,7 @@ def process_document_nlp(document_id: str, text: str):
 
 def enqueue_ocr_job(document_id: str, file_path: str):
     """Enqueue OCR processing job"""
-    if redis_conn is None:
+    if redis_conn is None or ocr_queue is None:
         raise Exception("Redis connection not available")
         
     job = ocr_queue.enqueue(process_document_ocr, document_id, file_path)
@@ -209,7 +228,7 @@ def enqueue_ocr_job(document_id: str, file_path: str):
 
 def enqueue_nlp_job(document_id: str, text: str):
     """Enqueue NLP processing job"""
-    if redis_conn is None:
+    if redis_conn is None or nlp_queue is None:
         raise Exception("Redis connection not available")
         
     job = nlp_queue.enqueue(process_document_nlp, document_id, text)

@@ -11,10 +11,11 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
     networks:
       - kmrl_network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-kmrl_user}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-kmrl_user} -d ${POSTGRES_DB:-kmrl_db}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -124,8 +125,14 @@ services:
       - MINIO_SECRET_KEY=${MINIO_ROOT_PASSWORD:-minioadmin123}
       - ENVIRONMENT=${ENVIRONMENT:-development}
     depends_on:
-      - backend
-      - redis
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      qdrant:
+        condition: service_started
+      minio:
+        condition: service_healthy
     networks:
       - kmrl_network
     volumes:
@@ -136,7 +143,7 @@ services:
   # React Frontend
   frontend:
     build:
-      context: ./KMRL-Frontend
+      context: ./frontend
       dockerfile: Dockerfile.frontend
     container_name: kmrl_frontend
     ports:
@@ -152,7 +159,7 @@ services:
     networks:
       - kmrl_network
     volumes:
-      - ./KMRL-Frontend:/app
+      - ./frontend:/app
       - /app/node_modules
     restart: unless-stopped
 

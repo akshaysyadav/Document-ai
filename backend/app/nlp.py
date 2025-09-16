@@ -1,219 +1,171 @@
-import spacy
-from transformers import AutoTokenizer, AutoModel
-import torch
-import numpy as np
 import logging
+import numpy as np
 from typing import List, Dict, Any
+import spacy
+from sentence_transformers import SentenceTransformer
 
 logger = logging.getLogger(__name__)
 
-# Load spaCy model
+# Initialize models
 try:
-    nlp = spacy.load("en_core_web_sm")
-    logger.info("spaCy English model loaded successfully")
-except Exception as e:
-    logger.error(f"Failed to load spaCy model: {e}")
-    nlp = None
+    # Load spaCy model for NER
+    nlp_model = spacy.load("en_core_web_sm")
+    logger.info("✅ spaCy model loaded successfully")
+except OSError:
+    logger.warning("⚠️ spaCy model not found, using fallback NER")
+    nlp_model = None
 
-# Load HuggingFace model for embeddings
-MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
 try:
-    tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
-    model = AutoModel.from_pretrained(MODEL_NAME)
-    logger.info(f"HuggingFace model loaded: {MODEL_NAME}")
+    # Load sentence transformer for embeddings
+    embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
+    logger.info("✅ SentenceTransformer model loaded successfully")
 except Exception as e:
-    logger.error(f"Failed to load HuggingFace model: {e}")
-    tokenizer = None
-    model = None
+    logger.warning(f"⚠️ SentenceTransformer model failed to load: {e}")
+    embedding_model = None
 
 def generate_embeddings(text: str) -> List[float]:
-    """
-    Generate text embeddings using HuggingFace transformers
-    
-    Args:
-        text (str): Input text
-        
-    Returns:
-        List[float]: Text embeddings
-    """
+    """Generate embeddings for text using SentenceTransformer"""
     try:
-        if tokenizer is None or model is None:
-            raise Exception("HuggingFace model not loaded")
-            
-        logger.info(f"Generating embeddings for text of length: {len(text)}")
-        
-        # Tokenize and encode
-        inputs = tokenizer(text, return_tensors="pt", truncation=True, padding=True, max_length=512)
+        if embedding_model is None:
+            # Fallback: simple word-based embedding
+            return _generate_simple_embeddings(text)
         
         # Generate embeddings
-        with torch.no_grad():
-            outputs = model(**inputs)
-            
-        # Use CLS token embedding or mean pooling
-        embeddings = outputs.last_hidden_state.mean(dim=1).squeeze().numpy()
-        
-        logger.info(f"Generated embeddings of size: {len(embeddings)}")
+        embeddings = embedding_model.encode(text)
         return embeddings.tolist()
         
     except Exception as e:
         logger.error(f"Failed to generate embeddings: {e}")
-        # Return dummy embeddings for now
-        return [0.0] * 384
+        return _generate_simple_embeddings(text)
 
-def extract_entities(text: str) -> List[Dict[str, Any]]:
-    """
-    Extract named entities from text using spaCy
-    
-    Args:
-        text (str): Input text
-        
-    Returns:
-        List[Dict]: List of extracted entities
-    """
+def _generate_simple_embeddings(text: str, dimension: int = 384) -> List[float]:
+    """Simple fallback embedding generation"""
     try:
-        if nlp is None:
-            raise Exception("spaCy model not loaded")
-            
-        logger.info(f"Extracting entities from text of length: {len(text)}")
+        # Simple hash-based embedding
+        words = text.lower().split()
+        embedding = [0.0] * dimension
         
-        # Process text
-        doc = nlp(text)
+        for i, word in enumerate(words[:dimension]):
+            # Simple hash-based feature
+            hash_val = hash(word) % dimension
+            embedding[hash_val] += 1.0
         
-        # Extract entities
+        # Normalize
+        norm = sum(x*x for x in embedding) ** 0.5
+        if norm > 0:
+            embedding = [x/norm for x in embedding]
+        
+        return embedding
+    except Exception as e:
+        logger.error(f"Failed to generate simple embeddings: {e}")
+        return [0.0] * dimension
+
+def extract_entities(text: str) -> List[Dict[str, str]]:
+    """Extract named entities from text"""
+    try:
+        if nlp_model is None:
+            return _extract_simple_entities(text)
+        
+        doc = nlp_model(text)
         entities = []
+        
         for ent in doc.ents:
             entities.append({
                 "text": ent.text,
                 "label": ent.label_,
                 "start": ent.start_char,
-                "end": ent.end_char,
-                "description": spacy.explain(ent.label_)
+                "end": ent.end_char
             })
-            
-        logger.info(f"Extracted {len(entities)} entities")
+        
         return entities
         
     except Exception as e:
         logger.error(f"Failed to extract entities: {e}")
-        return []
+        return _extract_simple_entities(text)
 
-def extract_keywords(text: str, num_keywords: int = 10) -> List[Dict[str, Any]]:
-    """
-    Extract keywords from text using spaCy
+def _extract_simple_entities(text: str) -> List[Dict[str, str]]:
+    """Simple entity extraction fallback"""
+    entities = []
     
-    Args:
-        text (str): Input text
-        num_keywords (int): Number of keywords to extract
-        
-    Returns:
-        List[Dict]: List of keywords with scores
-    """
+    # Simple keyword-based entity extraction
+    keywords = {
+        'PERSON': ['john', 'mary', 'smith', 'jones', 'brown', 'davis', 'wilson', 'miller'],
+        'ORG': ['company', 'corp', 'inc', 'ltd', 'organization', 'department', 'ministry'],
+        'GPE': ['city', 'state', 'country', 'nation', 'government', 'federal'],
+        'MONEY': ['dollar', 'euro', 'pound', 'rupee', 'yen', '$', '€', '£', '₹'],
+        'DATE': ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december']
+    }
+    
+    words = text.lower().split()
+    for i, word in enumerate(words):
+        for label, keyword_list in keywords.items():
+            if word in keyword_list:
+                entities.append({
+                    "text": word,
+                    "label": label,
+                    "start": i,
+                    "end": i + 1
+                })
+    
+    return entities
+
+def generate_summary(text: str, max_sentences: int = 3) -> str:
+    """Generate extractive summary of text"""
     try:
-        if nlp is None:
-            raise Exception("spaCy model not loaded")
-            
-        logger.info(f"Extracting keywords from text of length: {len(text)}")
+        sentences = text.split('. ')
+        if len(sentences) <= max_sentences:
+            return text
         
-        # Process text
-        doc = nlp(text)
+        # Simple extractive summary - take first few sentences
+        summary_sentences = sentences[:max_sentences]
+        summary = '. '.join(summary_sentences)
         
-        # Extract keywords (simplified approach)
-        keywords = []
-        word_freq = {}
+        # Ensure it ends with a period
+        if not summary.endswith('.'):
+            summary += '.'
         
-        for token in doc:
-            if (not token.is_stop and 
-                not token.is_punct and 
-                not token.is_space and 
-                len(token.text) > 2 and
-                token.pos_ in ['NOUN', 'ADJ', 'VERB']):
-                
-                word = token.lemma_.lower()
-                word_freq[word] = word_freq.get(word, 0) + 1
-        
-        # Sort by frequency and take top keywords
-        sorted_words = sorted(word_freq.items(), key=lambda x: x[1], reverse=True)
-        
-        for word, freq in sorted_words[:num_keywords]:
-            keywords.append({
-                "word": word,
-                "frequency": freq,
-                "score": freq / len(doc)
-            })
-            
-        logger.info(f"Extracted {len(keywords)} keywords")
-        return keywords
+        return summary
         
     except Exception as e:
-        logger.error(f"Failed to extract keywords: {e}")
-        return []
+        logger.error(f"Failed to generate summary: {e}")
+        return text[:500] + "..." if len(text) > 500 else text
 
-def analyze_sentiment(text: str) -> Dict[str, Any]:
-    """
-    Analyze text sentiment (placeholder for future implementation)
-    
-    Args:
-        text (str): Input text
+def extract_tasks(text: str) -> List[Dict[str, Any]]:
+    """Extract actionable tasks from text"""
+    try:
+        tasks = []
         
-    Returns:
-        Dict: Sentiment analysis results
-    """
-    logger.warning("Sentiment analysis not implemented yet")
-    return {
-        "sentiment": "neutral",
-        "confidence": 0.5,
-        "positive": 0.33,
-        "negative": 0.33,
-        "neutral": 0.34
-    }
-
-def summarize_text(text: str, max_length: int = 200) -> str:
-    """
-    Summarize text (placeholder for future implementation)
-    
-    Args:
-        text (str): Input text
-        max_length (int): Maximum summary length
+        # Task extraction keywords
+        task_patterns = [
+            'need to', 'must', 'should', 'required to', 'task is', 'action item',
+            'todo', 'implement', 'create', 'build', 'develop', 'install',
+            'configure', 'setup', 'update', 'fix', 'resolve', 'check',
+            'verify', 'test', 'review', 'approve', 'submit', 'send'
+        ]
         
-    Returns:
-        str: Text summary
-    """
-    logger.warning("Text summarization not implemented yet")
-    
-    # Simple extractive summary (first few sentences)
-    if nlp:
-        doc = nlp(text)
-        sentences = [sent.text for sent in doc.sents]
-        
-        # Take first few sentences up to max_length
-        summary = ""
+        sentences = text.split('. ')
         for sentence in sentences:
-            if len(summary + sentence) <= max_length:
-                summary += sentence + " "
-            else:
-                break
+            sentence = sentence.strip()
+            if not sentence:
+                continue
+            
+            # Check if sentence contains task patterns
+            if any(pattern in sentence.lower() for pattern in task_patterns):
+                # Determine priority
+                priority = 'medium'
+                if any(word in sentence.lower() for word in ['urgent', 'critical', 'immediate', 'asap', 'emergency']):
+                    priority = 'high'
+                elif any(word in sentence.lower() for word in ['optional', 'nice to have', 'later', 'low priority']):
+                    priority = 'low'
                 
-        return summary.strip()
-    
-    return text[:max_length] + "..." if len(text) > max_length else text
-
-def classify_document(text: str) -> Dict[str, Any]:
-    """
-    Classify document type/category (placeholder for future implementation)
-    
-    Args:
-        text (str): Input text
+                tasks.append({
+                    "text": sentence,
+                    "priority": priority,
+                    "status": "open"
+                })
         
-    Returns:
-        Dict: Document classification results
-    """
-    logger.warning("Document classification not implemented yet")
-    return {
-        "category": "general",
-        "confidence": 0.5,
-        "categories": {
-            "general": 0.5,
-            "technical": 0.3,
-            "legal": 0.2
-        }
-    }
+        return tasks
+        
+    except Exception as e:
+        logger.error(f"Failed to extract tasks: {e}")
+        return []

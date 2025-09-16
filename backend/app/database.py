@@ -14,9 +14,8 @@ DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://kmrl_user:kmrl_password@l
 # Create SQLAlchemy engine
 engine = create_engine(
     DATABASE_URL,
-    poolclass=StaticPool,
     pool_pre_ping=True,
-    echo=True  # Set to False in production
+    echo=False
 )
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -25,6 +24,12 @@ Base = declarative_base()
 # Redis Configuration
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379")
 redis_client = redis.from_url(REDIS_URL, decode_responses=True)
+
+# RQ Queues
+from rq import Queue
+ocr_queue = Queue('ocr', connection=redis_client)
+nlp_queue = Queue('nlp', connection=redis_client)
+post_process_queue = Queue('post_process', connection=redis_client)
 
 # Qdrant Configuration
 QDRANT_HOST = os.getenv("QDRANT_HOST", "localhost")

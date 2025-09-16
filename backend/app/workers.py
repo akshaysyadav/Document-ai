@@ -9,12 +9,15 @@ from minio import Minio
 from io import BytesIO
 from PyPDF2 import PdfReader
 from sqlalchemy.orm import Session
-from .database import minio_client, MINIO_BUCKET, SessionLocal
+from .database import minio_client, MINIO_BUCKET, SessionLocal, redis_client, ocr_queue, nlp_queue, post_process_queue
 from .models import DocumentPage, TextChunk
 from .services import document_service
 from qdrant_client import QdrantClient
 from qdrant_client.models import PointStruct
 from .nlp import generate_embeddings, extract_entities
+from .workers.document_processor import process_document
+from .workers.chunk_processor import process_chunk
+from .workers.post_processor import document_post_process
 
 logger = logging.getLogger(__name__)
 
@@ -48,10 +51,12 @@ redis_conn = get_redis_connection()
 if redis_conn:
     ocr_queue = Queue('ocr', connection=redis_conn)
     nlp_queue = Queue('nlp', connection=redis_conn)
+    post_process_queue = Queue('post_process', connection=redis_conn)
     default_queue = Queue(connection=redis_conn)
 else:
     ocr_queue = None
     nlp_queue = None
+    post_process_queue = None
     default_queue = None
 
 def process_document_ocr(document_id: int, file_path: str):
@@ -126,7 +131,7 @@ def process_document_ocr(document_id: int, file_path: str):
                 try:
                     from .database import qdrant_client
                     qdrant_client.upsert(
-                        collection_name=document_service.collection_name,
+                        collection_name="documents",
                         points=[{"id": point_id, "vector": vector, "payload": payload}],
                     )
                 except Exception as e:
@@ -217,17 +222,21 @@ def process_document_nlp(document_id: str, text: str):
             
         raise
 
-def enqueue_ocr_job(document_id: str, file_path: str):
-    """Enqueue OCR processing job"""
+def enqueue_document_processing(doc_id: int):
+    """Enqueue document processing job"""
     if redis_conn is None or ocr_queue is None:
         raise Exception("Redis connection not available")
         
-    job = ocr_queue.enqueue(process_document_ocr, document_id, file_path)
-    logger.info(f"Enqueued OCR job for document {document_id}: {job.id}")
+    job = ocr_queue.enqueue(process_document, doc_id)
+    logger.info(f"Enqueued document processing job for document {doc_id}: {job.id}")
     return job
 
+def enqueue_ocr_job(document_id: str, file_path: str):
+    """Enqueue OCR processing job (legacy function for compatibility)"""
+    return enqueue_document_processing(int(document_id))
+
 def enqueue_nlp_job(document_id: str, text: str):
-    """Enqueue NLP processing job"""
+    """Enqueue NLP processing job (legacy function for compatibility)"""
     if redis_conn is None or nlp_queue is None:
         raise Exception("Redis connection not available")
         
@@ -242,8 +251,8 @@ def run_worker():
         return
         
     with Connection(redis_conn):
-        worker = Worker(['ocr', 'nlp', 'default'])
-        logger.info("Starting RQ worker...")
+        worker = Worker(['ocr', 'nlp', 'post_process', 'default'])
+        logger.info("Starting RQ worker for enhanced document processing pipeline...")
         worker.work()
 
 if __name__ == '__main__':

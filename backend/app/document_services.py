@@ -31,7 +31,8 @@ class DocumentService:
     
     def _generate_vector_id(self, doc_id: int) -> str:
         """Generate Qdrant vector ID"""
-        return f"doc_{doc_id}"
+        import uuid
+        return str(uuid.uuid4())
     
     def _generate_file_path(self, filename: str, doc_uuid: str) -> str:
         """Generate MinIO file path"""
@@ -55,6 +56,8 @@ class DocumentService:
                 "metadata": document.doc_metadata,
                 "vector_id": document.vector_id,
                 "is_processed": document.is_processed,
+                "status": document.status,
+                "processed_at": document.processed_at.isoformat() if document.processed_at else None,
                 "created_at": document.created_at.isoformat(),
                 "updated_at": document.updated_at.isoformat()
             }

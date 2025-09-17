@@ -139,6 +139,24 @@ export const documentAPI = {
     const response = await api.get('/api/documents/health');
     return response.data;
   },
+
+  // Get document results (summary, chunks, tasks)
+  getDocumentResults: async (documentId) => {
+    const response = await api.get(`/api/documents/${documentId}/results`);
+    return response.data;
+  },
+
+  // Reprocess document
+  reprocessDocument: async (documentId) => {
+    const response = await api.post(`/api/documents/${documentId}/reprocess`);
+    return response.data;
+  },
+
+  // Update task
+  updateTask: async (taskId, updates) => {
+    const response = await api.patch(`/api/tasks/${taskId}`, updates);
+    return response.data;
+  },
 };
 
 // General API utilities

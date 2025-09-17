@@ -137,7 +137,7 @@ services:
       - kmrl_network
     volumes:
       - ./backend:/app
-    command: python -m app.workers
+    command: python run_worker.py
     restart: unless-stopped
 
   # React Frontend

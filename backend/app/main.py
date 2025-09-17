@@ -10,7 +10,9 @@ from .db import engine, Base
 from .qdrant_client import qdrant_client
 from .minio_client import minio_client
 from .database import init_db, init_minio, init_qdrant, MINIO_BUCKET
+from .services.enhanced_qdrant import enhanced_qdrant_service
 from .routes import router as documents_router
+from .task_routes import router as task_router
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -29,9 +31,6 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-        "http://frontend:5173",
         "http://localhost:3000",
         "http://frontend:3000",
     ],
@@ -55,12 +54,19 @@ async def startup_event():
         
         # Initialize Qdrant
         init_qdrant()
+        enhanced_qdrant_service._ensure_collection_exists()
         logger.info("Qdrant initialized successfully")
         
         # Test connections
         try:
             collections = qdrant_client.get_collections()
             logger.info(f"Qdrant connected successfully. Collections: {collections}")
+            
+            # Test enhanced Qdrant service
+            if enhanced_qdrant_service.health_check():
+                logger.info("Enhanced Qdrant service is healthy")
+            else:
+                logger.warning("Enhanced Qdrant service health check failed")
         except Exception as e:
             logger.warning(f"Qdrant connection failed: {e}")
         
@@ -79,6 +85,7 @@ async def startup_event():
 
 # Include routers
 app.include_router(documents_router)
+app.include_router(task_router)
 
 # Health check endpoint
 @app.get("/health")

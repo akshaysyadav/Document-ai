@@ -14,8 +14,9 @@ DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://kmrl_user:kmrl_password@l
 # Create SQLAlchemy engine
 engine = create_engine(
     DATABASE_URL,
+    poolclass=StaticPool,
     pool_pre_ping=True,
-    echo=False
+    echo=True  # Set to False in production
 )
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

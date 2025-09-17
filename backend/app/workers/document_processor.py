@@ -8,7 +8,8 @@ from io import BytesIO
 from ..database import SessionLocal, minio_client, MINIO_BUCKET, qdrant_client
 from ..models import Document, Chunk, Task, Summary, SummaryLevel, TaskPriority, TaskStatus
 from ..services import document_service
-from ..nlp import generate_embeddings, extract_entities, generate_ai_summary_and_tasks
+from ..nlp import generate_embeddings, extract_entities
+from ..nlp_client import nlp_client
 
 logger = logging.getLogger(__name__)
 
@@ -108,7 +109,7 @@ def process_document(doc_id: int):
             signal.alarm(60)
             
             try:
-                ai_results = generate_ai_summary_and_tasks(text_content)
+                ai_results = nlp_client.generate_ai_summary_and_tasks(text_content)
                 summary_text = ai_results.get("summary", "")
                 extracted_tasks_data = ai_results.get("tasks", [])
                 

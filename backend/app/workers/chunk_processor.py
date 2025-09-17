@@ -33,7 +33,7 @@ def process_chunk(chunk_id: int):
                 "id": vector_id,
                 "vector": embeddings,
                 "payload": {
-                    "document_id": chunk.doc_id,
+                    "document_id": chunk.document_id,
                     "chunk_id": chunk.id,
                     "chunk_no": chunk.chunk_no,
                     "text": chunk.text,
@@ -46,8 +46,7 @@ def process_chunk(chunk_id: int):
                 points=[point]
             )
             
-            chunk.embedding_id = vector_id
-            chunk.status = 'processed'
+            chunk.vector_id = vector_id
             logger.info(f"Stored chunk {chunk.id} in Qdrant with vector ID {vector_id}")
             
         except Exception as e:
@@ -56,7 +55,7 @@ def process_chunk(chunk_id: int):
         # Extract entities
         try:
             entities = extract_entities(chunk.text)
-            chunk.nlp_metadata = {"entities": entities}
+            chunk.entities = entities
             logger.info(f"Extracted {len(entities)} entities from chunk {chunk.id}")
         except Exception as e:
             logger.error(f"Failed to extract entities from chunk {chunk.id}: {e}")
@@ -65,8 +64,8 @@ def process_chunk(chunk_id: int):
         
         return {
             "chunk_id": chunk_id,
-            "vector_id": chunk.embedding_id,
-            "entities_count": len(chunk.nlp_metadata.get("entities", [])) if chunk.nlp_metadata else 0
+            "vector_id": chunk.vector_id,
+            "entities_count": len(chunk.entities) if chunk.entities else 0
         }
         
     except Exception as e:

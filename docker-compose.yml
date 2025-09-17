@@ -88,6 +88,7 @@ services:
       - MINIO_ENDPOINT=minio:9000
       - MINIO_ACCESS_KEY=${MINIO_ROOT_USER:-minioadmin}
       - MINIO_SECRET_KEY=${MINIO_ROOT_PASSWORD:-minioadmin123}
+      - NLP_SERVICE_URL=http://nlp_service:8000
       - ENVIRONMENT=${ENVIRONMENT:-development}
       - WATCHFILES_FORCE_POLLING=true
       - UVICORN_RELOAD=true
@@ -101,6 +102,8 @@ services:
       qdrant:
         condition: service_started
       minio:
+        condition: service_healthy
+      nlp_service:
         condition: service_healthy
     networks:
       - kmrl_network
@@ -123,6 +126,7 @@ services:
       - MINIO_ENDPOINT=minio:9000
       - MINIO_ACCESS_KEY=${MINIO_ROOT_USER:-minioadmin}
       - MINIO_SECRET_KEY=${MINIO_ROOT_PASSWORD:-minioadmin123}
+      - NLP_SERVICE_URL=http://nlp_service:8000
       - ENVIRONMENT=${ENVIRONMENT:-development}
     depends_on:
       postgres:
@@ -133,12 +137,44 @@ services:
         condition: service_started
       minio:
         condition: service_healthy
+      nlp_service:
+        condition: service_healthy
     networks:
       - kmrl_network
     volumes:
       - ./backend:/app
     command: python run_worker.py
     restart: unless-stopped
+
+  # NLP Service with Flan-T5-Large
+  nlp_service:
+    build:
+      context: ./nlp_service
+      dockerfile: Dockerfile
+    container_name: kmrl_nlp_service
+    ports:
+      - "8001:8000"
+    environment:
+      - TRANSFORMERS_CACHE=/app/.cache
+      - HF_HOME=/app/.cache
+      - TORCH_HOME=/app/.cache
+    networks:
+      - kmrl_network
+    volumes:
+      - nlp_cache:/app/.cache
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+        reservations:
+          memory: 2G
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 30s
+      start_period: 300s  # Give model time to load
+      retries: 3
 
   # React Frontend
   frontend:
@@ -171,6 +207,8 @@ volumes:
   qdrant_data:
     driver: local
   minio_data:
+    driver: local
+  nlp_cache:
     driver: local
 
 networks:

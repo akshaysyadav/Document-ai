@@ -161,8 +161,6 @@ class DocumentResponse(BaseModel):
     doc_metadata: Optional[Dict[str, Any]]
     vector_id: Optional[str]
     is_processed: bool
-    status: str
-    processed_at: Optional[datetime]
     created_at: datetime
     updated_at: datetime
     
@@ -191,7 +189,6 @@ class ChunkResponse(BaseModel):
     page_no: Optional[int]
     chunk_no: int
     text_excerpt: str
-    text: Optional[str]
     summary: Optional[str]
     entities: Optional[List[Dict[str, Any]]]
     status: str

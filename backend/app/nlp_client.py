@@ -11,7 +11,7 @@ class NLPServiceClient:
     """Client for communicating with the NLP service"""
     
     def __init__(self, base_url: str = None):
-        self.base_url = base_url or os.getenv("NLP_SERVICE_URL", "http://nlp_service:8000")
+        self.base_url = base_url or os.getenv("NLP_SERVICE_URL", "http://localhost:8001")
         self.timeout = 120.0  # 2 minutes for model inference
     
     async def _make_request(self, endpoint: str, text: str) -> Dict[str, Any]:

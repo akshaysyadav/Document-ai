@@ -146,7 +146,7 @@ services:
     command: python run_worker.py
     restart: unless-stopped
 
-  # NLP Service with Flan-T5-Large
+  # NLP Service with Flan-T5-Base (pre-downloaded models)
   nlp_service:
     build:
       context: ./nlp_service
@@ -155,25 +155,26 @@ services:
     ports:
       - "8001:8000"
     environment:
-      - TRANSFORMERS_CACHE=/app/.cache
-      - HF_HOME=/app/.cache
-      - TORCH_HOME=/app/.cache
+      - TRANSFORMERS_CACHE=/app/models
+      - HF_HOME=/app/models
+      - TORCH_HOME=/app/models
     networks:
       - kmrl_network
     volumes:
-      - nlp_cache:/app/.cache
+      # Optional: Map to host for model persistence across image rebuilds
+      - nlp_models:/app/models
     restart: unless-stopped
     deploy:
       resources:
         limits:
-          memory: 4G
+          memory: 3G  # Slightly reduced since using smaller model
         reservations:
-          memory: 2G
+          memory: 1.5G
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
       timeout: 30s
-      start_period: 300s  # Give model time to load
+      start_period: 120s  # Reduced since models are pre-downloaded
       retries: 3
 
   # React Frontend
@@ -208,7 +209,7 @@ volumes:
     driver: local
   minio_data:
     driver: local
-  nlp_cache:
+  nlp_models:
     driver: local
 
 networks:

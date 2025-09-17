@@ -227,7 +227,7 @@ def enqueue_document_processing(doc_id: int):
     if redis_conn is None or ocr_queue is None:
         raise Exception("Redis connection not available")
         
-    job = ocr_queue.enqueue(process_document, doc_id)
+    job = ocr_queue.enqueue(process_document, doc_id, None)  # Pass None for db session
     logger.info(f"Enqueued document processing job for document {doc_id}: {job.id}")
     return job
 

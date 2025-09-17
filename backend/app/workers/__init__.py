@@ -24,8 +24,8 @@ def enqueue_document_processing(document_id: int):
     """
     from .document_processor import process_document
     
-    # Enqueue the main document processing job
-    job = ocr_queue.enqueue(process_document, document_id)
+    # Enqueue the main document processing job with None for db session (queue worker will create new session)
+    job = ocr_queue.enqueue(process_document, document_id, None)
     print(f"📋 Enqueued document processing job {job.id} for document {document_id}")
     return job
 

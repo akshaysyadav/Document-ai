@@ -21,21 +21,28 @@ export const DocumentList = ({ onViewResults, refreshTrigger }) => {
   const fetchDocuments = async () => {
     try {
       setLoading(true);
+      console.log('DocumentList: Fetching documents...');
+      
       const response = await documentAPI.getDocuments({
         page: currentPage,
         size: itemsPerPage,
         search: searchTerm || undefined,
       });
       
+      console.log('DocumentList: API response:', response);
+      console.log('DocumentList: Documents received:', response.documents?.length || 0);
+      
       // Sort documents by created_at descending (newest first)
       const sortedDocuments = (response.documents || []).sort((a, b) => 
         new Date(b.created_at) - new Date(a.created_at)
       );
       
+      console.log('DocumentList: Sorted documents:', sortedDocuments.length);
       setDocuments(sortedDocuments);
       setTotalPages(response.pages || 1);
     } catch (error) {
-      console.error('Error fetching documents:', error);
+      console.error('DocumentList: Error fetching documents:', error);
+      console.error('DocumentList: Error details:', error.response?.data || error.message);
       toast({
         title: "Error",
         description: "Failed to fetch documents.",
@@ -47,6 +54,7 @@ export const DocumentList = ({ onViewResults, refreshTrigger }) => {
   };
 
   useEffect(() => {
+    console.log('DocumentList: useEffect triggered - page:', currentPage, 'search:', searchTerm, 'refreshTrigger:', refreshTrigger);
     fetchDocuments();
   }, [currentPage, searchTerm, refreshTrigger]);
 

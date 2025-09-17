@@ -161,6 +161,8 @@ class DocumentResponse(BaseModel):
     doc_metadata: Optional[Dict[str, Any]]
     vector_id: Optional[str]
     is_processed: bool
+    status: Optional[str] = None
+    processed_at: Optional[datetime] = None
     created_at: datetime
     updated_at: datetime
     

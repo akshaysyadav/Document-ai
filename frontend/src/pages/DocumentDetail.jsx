@@ -26,18 +26,34 @@ const DocumentDetail = () => {
         // Fetch document info and results in parallel
         const [docResponse, resultsResponse] = await Promise.all([
           documentAPI.getDocument(id),
-          documentAPI.getDocumentResults(id).catch(() => ({ summary: null, chunks: [], entities: [], tasks: [] }))
+          documentAPI.getDocumentResults(id)
         ]);
+        
+        console.log('Document response:', docResponse);
+        console.log('Results response:', resultsResponse);
         
         setDocument(docResponse);
         setResults(resultsResponse);
       } catch (error) {
         console.error('Error fetching document details:', error);
-        toast({
-          title: "Error",
-          description: "Failed to load document details.",
-          variant: "destructive",
-        });
+        
+        // Try to fetch results separately if parallel fetch failed
+        try {
+          const docResponse = await documentAPI.getDocument(id);
+          setDocument(docResponse);
+          console.log('Document fetched successfully:', docResponse);
+          
+          const resultsResponse = await documentAPI.getDocumentResults(id);
+          setResults(resultsResponse);
+          console.log('Results fetched successfully:', resultsResponse);
+        } catch (separateError) {
+          console.error('Separate fetch also failed:', separateError);
+          toast({
+            title: "Error",
+            description: "Failed to load document details.",
+            variant: "destructive",
+          });
+        }
       } finally {
         setLoading(false);
       }
@@ -245,7 +261,24 @@ const DocumentDetail = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                {results?.summary ? (
+                {results?.chunks && results.chunks.length > 0 ? (
+                  <div className="prose prose-sm max-w-none">
+                    <div className="text-gray-700 leading-relaxed space-y-4">
+                      {results.chunks.map((chunk, index) => (
+                        chunk.summary && (
+                          <div key={index} className="border-l-2 border-blue-200 pl-4">
+                            <div className="text-sm font-medium text-blue-600 mb-1">
+                              Section {index + 1}
+                            </div>
+                            <p className="whitespace-pre-wrap text-gray-700">
+                              {chunk.summary}
+                            </p>
+                          </div>
+                        )
+                      ))}
+                    </div>
+                  </div>
+                ) : results?.summary ? (
                   <div className="prose prose-sm max-w-none">
                     <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">
                       {results.summary}
@@ -281,12 +314,14 @@ const DocumentDetail = () => {
                 {results?.tasks && results.tasks.length > 0 ? (
                   <ScrollArea className="h-96">
                     <div className="space-y-4">
-                      {results.tasks.map((task, index) => (
-                        <Card key={index} className="border-l-4 border-l-blue-500">
+                      {results.tasks
+                        .filter(task => task.id !== "no-tasks") // Filter out placeholder tasks
+                        .map((task, index) => (
+                        <Card key={task.id || index} className="border-l-4 border-l-blue-500">
                           <CardContent className="pt-4">
                             <div className="flex items-start justify-between mb-2">
                               <p className="text-sm font-medium text-gray-900 flex-1">
-                                {task.text}
+                                {task.task_text}
                               </p>
                               {task.priority && getPriorityBadge(task.priority)}
                             </div>
@@ -304,6 +339,15 @@ const DocumentDetail = () => {
                           </CardContent>
                         </Card>
                       ))}
+                      {/* Show message if only "no-tasks" entries exist */}
+                      {results.tasks.every(task => task.id === "no-tasks") && (
+                        <div className="text-center py-4">
+                          <CheckCircle2 className="mx-auto h-8 w-8 text-gray-400 mb-2" />
+                          <p className="text-sm text-gray-500">
+                            {results.tasks[0]?.task_text || "No actionable tasks found in this document."}
+                          </p>
+                        </div>
+                      )}
                     </div>
                   </ScrollArea>
                 ) : (

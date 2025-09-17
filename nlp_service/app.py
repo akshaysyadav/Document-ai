@@ -21,37 +21,52 @@ class TextRequest(BaseModel):
 
 class SummaryResponse(BaseModel):
     summary: List[str]
-    method: str = "flan-t5-large"
+    method: str = "flan-t5-base"
 
 class HighlightResponse(BaseModel):
     highlights: List[str]
-    method: str = "flan-t5-large"
+    method: str = "flan-t5-base"
 
 class TasksResponse(BaseModel):
     tasks: List[Dict[str, str]]
-    method: str = "flan-t5-large"
+    method: str = "flan-t5-base"
 
 async def load_model():
-    """Load the Flan-T5-Large model and tokenizer"""
+    """Load the Flan-T5-Base model and tokenizer (pre-downloaded during build)"""
     global model, tokenizer
     
     try:
-        logger.info("Loading Flan-T5-Large model...")
-        model_name = "google/flan-t5-large"
+        logger.info("Loading pre-downloaded Flan-T5-Base model...")
         
-        # Load tokenizer and model
-        tokenizer = T5Tokenizer.from_pretrained(model_name)
+        # Check if models were pre-downloaded during build
+        models_dir = "/app/models"
+        if os.path.exists(f"{models_dir}/.download_complete"):
+            logger.info("✅ Using pre-downloaded models from Docker image")
+        elif os.path.exists(f"{models_dir}/.models_ready"):
+            logger.info("✅ Using models from persistent volume")
+        else:
+            logger.warning("⚠️ Models not found, downloading now (this should only happen once)")
+        
+        # Using smaller, faster model instead of flan-t5-large
+        model_name = "google/flan-t5-base"  # ~990MB vs 3GB for large
+        
+        # Load tokenizer and model from cache (should be instant if pre-downloaded)
+        tokenizer = T5Tokenizer.from_pretrained(
+            model_name,
+            cache_dir=models_dir
+        )
         model = T5ForConditionalGeneration.from_pretrained(
             model_name,
-            torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32,
-            device_map="auto" if torch.cuda.is_available() else None
+            torch_dtype=torch.float32,  # CPU optimized
+            device_map=None,
+            cache_dir=models_dir
         )
         
-        # Move to CPU if no GPU available
-        if not torch.cuda.is_available():
-            model = model.to('cpu')
+        # Always use CPU for better compatibility and faster startup
+        model = model.to('cpu')
         
-        logger.info(f"✅ Model loaded successfully on {'GPU' if torch.cuda.is_available() else 'CPU'}")
+        logger.info(f"✅ Flan-T5-Base model loaded successfully on CPU")
+        logger.info("🚀 Ready to process documents!")
         
     except Exception as e:
         logger.error(f"❌ Failed to load model: {e}")
@@ -68,7 +83,7 @@ async def lifespan(app: FastAPI):
 # Create FastAPI app
 app = FastAPI(
     title="KMRL NLP Service",
-    description="Advanced NLP service using Flan-T5-Large for document processing",
+    description="Optimized NLP service using Flan-T5-Base for fast document processing",
     version="1.0.0",
     lifespan=lifespan
 )
@@ -252,7 +267,7 @@ async def root():
     """Root endpoint with service information"""
     return {
         "service": "KMRL NLP Service",
-        "model": "google/flan-t5-large",
+        "model": "google/flan-t5-base",
         "endpoints": {
             "summarize": "POST /summarize - Generate document summary",
             "highlight": "POST /highlight - Extract key highlights", 

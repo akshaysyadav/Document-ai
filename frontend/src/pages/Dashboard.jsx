@@ -46,7 +46,12 @@ const Dashboard = () => {
   };
 
   const handleDocumentUploaded = () => {
-    setRefreshTrigger(prev => prev + 1);
+    console.log('Dashboard: handleDocumentUploaded called, current trigger:', refreshTrigger);
+    setRefreshTrigger(prev => {
+      const newValue = prev + 1;
+      console.log('Dashboard: Setting refresh trigger to:', newValue);
+      return newValue;
+    });
   };
 
   const onSubmit = async (values) => {
@@ -62,13 +67,16 @@ const Dashboard = () => {
 
     try {
       setUploading(true);
+      console.log('Dashboard: Starting upload...', values);
       
-      await documentAPI.createDocument({
+      const uploadResponse = await documentAPI.createDocument({
         title: values.title,
         description: values.description || '',
         tags: values.tags ? values.tags.split(',').map(tag => tag.trim()).filter(tag => tag) : [],
         file: selectedFile,
       });
+      
+      console.log('Dashboard: Upload response:', uploadResponse);
       
       toast({
         title: "Document uploaded",
@@ -81,9 +89,12 @@ const Dashboard = () => {
         fileInputRef.current.value = '';
       }
       setUploadDialogOpen(false);
+      
+      console.log('Dashboard: Triggering refresh...');
       handleDocumentUploaded();
     } catch (error) {
-      console.error('Upload error:', error);
+      console.error('Dashboard: Upload error:', error);
+      console.error('Dashboard: Upload error details:', error.response?.data || error.message);
       toast({
         title: "Upload failed",
         description: "Failed to upload document. Please try again.",

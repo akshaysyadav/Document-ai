@@ -26,7 +26,7 @@ async def create_document(
     content: Optional[str] = Form(None),
     tags: Optional[str] = Form(None),  # JSON string of tags
     file: Optional[UploadFile] = File(None),
-    background_tasks: BackgroundTasks = None,
+    background_tasks: BackgroundTasks = BackgroundTasks(),
     db: Session = Depends(get_db)
 ):
     """Create a new document with optional file upload"""
@@ -58,15 +58,17 @@ async def create_document(
                     enqueue_document_processing(document.id)
                 elif background_tasks is not None:
                     from .workers.document_processor import process_document
-                    background_tasks.add_task(process_document, document.id)
+                    # For background tasks, MUST pass None to create new session
+                    background_tasks.add_task(process_document, document.id, None)
                 else:
                     from .workers.document_processor import process_document
-                    process_document(document.id)
+                    # For inline processing, use new session to avoid transaction conflicts
+                    process_document(document.id, None)
             except Exception as e:
                 logger.warning(f"Processing dispatch failed: {e}. Attempting inline.")
                 try:
                     from .workers.document_processor import process_document
-                    process_document(document.id)
+                    process_document(document.id, None)  # Use new session for fallback
                 except Exception as e2:
                     logger.warning(f"Inline processing failed: {e2}")
         return document
@@ -601,11 +603,11 @@ async def reprocess_document(
                 return {"message": f"Document {document_id} queued for reprocessing"}
             elif background_tasks is not None:
                 from .workers.document_processor import process_document
-                background_tasks.add_task(process_document, document_id)
+                background_tasks.add_task(process_document, document_id, None)
                 return {"message": f"Document {document_id} reprocessing started in background"}
             else:
                 from .workers.document_processor import process_document
-                process_document(document_id)
+                process_document(document_id, db)
                 return {"message": f"Document {document_id} reprocessed directly"}
         except Exception as e2:
             raise HTTPException(status_code=500, detail=f"Failed to process document: {str(e2)}")
@@ -682,7 +684,7 @@ async def reprocess_document_direct(
         # Process directly
         try:
             from .workers.document_processor import process_document
-            result = process_document(document_id)
+            result = process_document(document_id, db)
             return {"message": "Document reprocessed successfully", "document_id": document_id, "result": result}
         except Exception as e:
             logger.error(f"Failed to reprocess document: {e}")
@@ -709,7 +711,7 @@ async def process_document_direct(
         # Process directly
         try:
             from .workers.document_processor import process_document
-            result = process_document(document_id)
+            result = process_document(document_id, db)
             return {"message": "Document processed successfully", "document_id": document_id, "result": result}
         except Exception as e:
             logger.error(f"Failed to process document: {e}")

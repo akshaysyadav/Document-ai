@@ -13,11 +13,16 @@ from ..nlp_client import nlp_client
 
 logger = logging.getLogger(__name__)
 
-def process_document(doc_id: int):
+def process_document(doc_id: int, db: Session = None):
     """Main document processing function"""
     logger.info(f"🚀 Starting document processing for document {doc_id}")
     
-    db = SessionLocal()
+    # Use provided session or create a new one
+    if db is None:
+        db = SessionLocal()
+        close_db = True
+    else:
+        close_db = False
     
     try:
         # Get document
@@ -282,7 +287,8 @@ def process_document(doc_id: int):
         
         raise
     finally:
-        db.close()
+        if close_db:
+            db.close()
 
 def chunk_document(text: str, document_id: int) -> List[Chunk]:
     """Split document text into chunks"""

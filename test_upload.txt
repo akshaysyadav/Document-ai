@@ -1,0 +1,11 @@
+Test Document for KMRL System
+
+This is a test document to verify the complete upload and processing workflow.
+
+Action Items:
+1. Review the system performance
+2. Update the documentation 
+3. Schedule a team meeting for next week
+4. Send status report to management
+
+This document should be automatically processed and these tasks should be extracted.

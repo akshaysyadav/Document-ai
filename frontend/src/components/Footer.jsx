@@ -18,10 +18,8 @@ const Footer = () => {
 
   const footerLinks = {
     product: [
-      { name: "AI Scheduler", href: "/dashboard", isRoute: true },
-      { name: "Document Automation", href: "/documents", isRoute: true },
-      { name: "Reports & Analytics", href: "/reports", isRoute: true },
-      { name: "Dashboard", href: "/dashboard", isRoute: true }
+      { name: "Dashboard", href: "/dashboard", isRoute: true },
+      { name: "Reports & Analytics", href: "/reports", isRoute: true }
     ],
     company: [
       { name: "About Us", href: "#about" },

@@ -31,7 +31,7 @@ const Index = () => {
       title: "Document Intelligence MVP",
       description:
         "🚀 AI-powered document processing with OCR, NLP, and vector search capabilities - MVP Ready!",
-      link: "/documents",
+      link: "/dashboard",
       color: "bg-primary",
       status: "MVP Ready",
     },

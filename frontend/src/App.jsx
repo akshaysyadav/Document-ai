@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import DocumentsPage from "./pages/DocumentsPage";
+import DocumentDetail from "./pages/DocumentDetail";
 import Reports from "./pages/Reports";
 import Dashboard from "./pages/Dashboard";
 import NotFound from "./pages/NotFound";
@@ -23,7 +24,7 @@ const App = () => (
       <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <Routes>
           <Route path="/" element={<Index />} />
-          <Route path="/documents" element={<Dashboard />} />
+  
           <Route path="/reports" element={
             <ProtectedRoute>
               <Reports />
@@ -32,6 +33,11 @@ const App = () => (
           <Route path="/dashboard" element={
             <ProtectedRoute>
               <Dashboard />
+            </ProtectedRoute>
+          } />
+          <Route path="/documents/:id" element={
+            <ProtectedRoute>
+              <DocumentDetail />
             </ProtectedRoute>
           } />
           <Route path="/login" element={<Login />} />

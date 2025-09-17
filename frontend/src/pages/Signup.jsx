@@ -51,7 +51,7 @@ export default function Signup() {
         localStorage.setItem("access_token", data.access_token);
         localStorage.setItem("isLoggedIn", "true");
         localStorage.setItem("user", JSON.stringify(data.user));
-        navigate("/documents");
+        navigate("/dashboard");
       }
     } catch (err) {
       setError("Network error");

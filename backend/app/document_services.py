@@ -222,18 +222,11 @@ class DocumentService:
             raise HTTPException(status_code=500, detail=f"Document creation failed: {str(e)}")
     
     def get_document(self, db: Session, doc_id: int) -> Optional[Document]:
-        """Get document with cache priority"""
+        """Get document from database (cache disabled for consistency)"""
         try:
-            # Try cache first
-            cached_doc = self._get_from_cache(doc_id)
-            if cached_doc:
-                logger.info(f"Retrieved document {doc_id} from cache")
-                return cached_doc
-            
-            # Get from database
+            # Get from database directly for consistency
             document = db.query(Document).filter(Document.id == doc_id).first()
             if document:
-                self._cache_document(document)
                 logger.info(f"Retrieved document {doc_id} from database")
             
             return document
